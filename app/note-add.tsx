@@ -1,4 +1,5 @@
 import { TaskCard } from "@/components/task-card";
+import { TaskSortModal } from "@/components/task-sort-modal";
 import { theme } from "@/config/theme";
 import { useDebounce } from "@/hooks/use-debounce";
 import { loadNote, saveNote } from "@/lib/storage";
@@ -7,13 +8,13 @@ import { useNavigation } from "@react-navigation/native";
 import { useLocalSearchParams } from "expo-router";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
-  Modal,
+  KeyboardAvoidingView,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
-  View,
+  View
 } from "react-native";
 
 type TaskSortOption =
@@ -156,11 +157,11 @@ export default function NoteAdd() {
       tasksList.map((task) =>
         task.id === taskId
           ? {
-              ...task,
-              completed: !task.completed,
-              status: !task.completed ? "completed" : "pending",
-              updatedAt: new Date(),
-            }
+            ...task,
+            completed: !task.completed,
+            status: !task.completed ? "completed" : "pending",
+            updatedAt: new Date(),
+          }
           : task
       )
     );
@@ -224,124 +225,75 @@ export default function NoteAdd() {
 
   const sortedTasks = sortTasks(tasksList, taskSortOption);
 
-  const getTaskSortLabel = (option: TaskSortOption) => {
-    switch (option) {
-      case "priority-desc":
-        return "High Priority";
-      case "priority-asc":
-        return "Low Priority";
-      case "date-desc":
-        return "Newest";
-      case "date-asc":
-        return "Oldest";
-      case "completed":
-        return "Completed Last";
-    }
-  };
-
   const handleTaskSortChange = (option: TaskSortOption) => {
     setTaskSortOption(option);
     setShowTaskSortModal(false);
   };
 
   return (
-    <ScrollView style={styles.container}>
-      {/* Tasks Section */}
-      <View style={styles.tasksSection}>
-        <View style={styles.tasksHeader}>
-          <Text style={styles.label}>Tasks</Text>
+    <KeyboardAvoidingView
+      behavior='padding'
+      style={styles.container}
+      keyboardVerticalOffset={100}
+    >
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Tasks Section */}
+        <View style={styles.tasksSection}>
+          <View style={styles.tasksHeader}>
+            <Text style={styles.label}>Tasks</Text>
+            <Pressable
+              style={styles.taskSortButton}
+              onPress={() => setShowTaskSortModal(true)}
+              android_ripple={{ color: "rgba(255, 255, 255, 0.1)" }}
+            >
+              <FontAwesome
+                name="sort"
+                size={16}
+                style={styles.taskSortButtonIcon}
+              />
+            </Pressable>
+          </View>
+
+          {/* Tasks List */}
+          {sortedTasks.map((task) => (
+            <TaskCard
+              key={task.id}
+              task={task}
+              onToggleComplete={toggleTaskCompletion}
+              onPriorityChange={updateTaskPriority}
+              onDescriptionChange={updateTaskDescription}
+              onRemove={removeTask}
+            />
+          ))}
+
+          {/* Add Task Button */}
           <Pressable
-            style={styles.taskSortButton}
-            onPress={() => setShowTaskSortModal(true)}
+            style={styles.addTaskButton}
             android_ripple={{ color: "rgba(255, 255, 255, 0.1)" }}
+            onPress={addTask}
           >
             <FontAwesome
-              name="sort"
-              size={16}
-              style={styles.taskSortButtonIcon}
+              name="plus"
+              size={20}
+              style={styles.addTaskButtonIcon}
             />
+            <Text style={styles.addTaskButtonText}>Add Task</Text>
           </Pressable>
         </View>
+      </ScrollView>
 
-        {/* Task Sort Modal */}
-        <Modal
-          visible={showTaskSortModal}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setShowTaskSortModal(false)}
-        >
-          <Pressable
-            style={styles.modalOverlay}
-            onPress={() => setShowTaskSortModal(false)}
-          >
-            <View
-              style={styles.modalContent}
-              onStartShouldSetResponder={() => true}
-            >
-              <Text style={styles.modalTitle}>Sort Tasks By</Text>
-              {(
-                [
-                  "priority-desc",
-                  "priority-asc",
-                  "date-desc",
-                  "date-asc",
-                  "completed",
-                ] as TaskSortOption[]
-              ).map((option) => (
-                <Pressable
-                  key={option}
-                  style={[
-                    styles.sortOption,
-                    taskSortOption === option && styles.sortOptionSelected,
-                  ]}
-                  onPress={() => handleTaskSortChange(option)}
-                  android_ripple={{ color: "rgba(255, 255, 255, 0.1)" }}
-                >
-                  <Text
-                    style={[
-                      styles.sortOptionText,
-                      taskSortOption === option &&
-                        styles.sortOptionTextSelected,
-                    ]}
-                  >
-                    {getTaskSortLabel(option)}
-                  </Text>
-                  {taskSortOption === option && (
-                    <FontAwesome
-                      name="check"
-                      size={16}
-                      style={styles.sortOptionCheck}
-                    />
-                  )}
-                </Pressable>
-              ))}
-            </View>
-          </Pressable>
-        </Modal>
-
-        {/* Tasks List */}
-        {sortedTasks.map((task) => (
-          <TaskCard
-            key={task.id}
-            task={task}
-            onToggleComplete={toggleTaskCompletion}
-            onPriorityChange={updateTaskPriority}
-            onDescriptionChange={updateTaskDescription}
-            onRemove={removeTask}
-          />
-        ))}
-
-        {/* Add Task Button */}
-        <Pressable
-          style={styles.addTaskButton}
-          android_ripple={{ color: "rgba(255, 255, 255, 0.1)" }}
-          onPress={addTask}
-        >
-          <FontAwesome name="plus" size={20} style={styles.addTaskButtonIcon} />
-          <Text style={styles.addTaskButtonText}>Add Task</Text>
-        </Pressable>
-      </View>
-    </ScrollView>
+      {/* Task Sort Modal */}
+      <TaskSortModal
+        visible={showTaskSortModal}
+        onRequestClose={() => setShowTaskSortModal(false)}
+        taskSortOption={taskSortOption}
+        onTaskSortChange={handleTaskSortChange}
+      />
+    </KeyboardAvoidingView>
   );
 }
 
@@ -349,6 +301,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
+  },
+  scrollContent: {
     padding: 16,
   },
   headerTitleContainer: {
@@ -391,47 +345,6 @@ const styles = StyleSheet.create({
   },
   taskSortButtonIcon: {
     color: theme.colors.text,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-  },
-  modalContent: {
-    backgroundColor: theme.colors.inputBackground,
-    borderRadius: 12,
-    padding: 16,
-    width: "100%",
-    maxWidth: 300,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: theme.colors.text,
-    marginBottom: 16,
-  },
-  sortOption: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  sortOptionSelected: {
-    backgroundColor: theme.colors.background,
-  },
-  sortOptionText: {
-    fontSize: 16,
-    color: theme.colors.text,
-  },
-  sortOptionTextSelected: {
-    fontWeight: "600",
-  },
-  sortOptionCheck: {
-    color: theme.colors.primary,
   },
   addTaskButton: {
     backgroundColor: theme.colors.primary,
